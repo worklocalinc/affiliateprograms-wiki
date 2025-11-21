@@ -17,12 +17,13 @@ import {
 // 🔴 REPLACE THIS WITH YOUR FIREBASE CONFIG
 // ---------------------------------------------------------
 const firebaseConfig = {
-  apiKey: "REPLACE_WITH_YOUR_API_KEY",
-  authDomain: "REPLACE_WITH_YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "REPLACE_WITH_YOUR_PROJECT_ID",
-  storageBucket: "REPLACE_WITH_YOUR_PROJECT_ID.firebasestorage.app",
-  messagingSenderId: "REPLACE_WITH_YOUR_SENDER_ID",
-  appId: "REPLACE_WITH_YOUR_APP_ID"
+  apiKey: "AIzaSyAXc956OHB8PREsAatLEX-eTpNyI2Z7Qeo",
+  authDomain: "afffiliate-wiki.firebaseapp.com",
+  projectId: "afffiliate-wiki",
+  storageBucket: "afffiliate-wiki.firebasestorage.app",
+  messagingSenderId: "1057980274980",
+  appId: "1:1057980274980:web:1f00f1877224251643bbb1",
+  measurementId: "G-7NJK2R1DHB"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -60,8 +61,15 @@ export default function AffiliateWiki() {
   const [searchQuery, setSearchQuery] = useState('');
 
   // --- Auth & Data ---
+  const isDemoMode = firebaseConfig.apiKey.includes("REPLACE");
+
   useEffect(() => {
     const initAuth = async () => {
+      if (isDemoMode) {
+        console.log("Running in Demo Mode");
+        setUser({ uid: 'demo-user', isAnonymous: true });
+        return;
+      }
       try {
         await signInAnonymously(auth);
       } catch (err) {
@@ -70,12 +78,27 @@ export default function AffiliateWiki() {
       }
     };
     initAuth();
-    const unsubscribe = onAuthStateChanged(auth, setUser);
-    return () => unsubscribe();
-  }, []);
+    if (!isDemoMode) {
+      const unsubscribe = onAuthStateChanged(auth, setUser);
+      return () => unsubscribe();
+    }
+  }, [isDemoMode]);
 
   useEffect(() => {
     if (!user) return;
+
+    if (isDemoMode) {
+      // Mock Data
+      const mockPrograms = [
+        { id: '1', name: 'TechGear Affiliate', niche: 'Technology', commission: '15%', status: 'active', description: 'High quality tech gadgets.', updatedAt: { seconds: Date.now() / 1000 } },
+        { id: '2', name: 'GreenLife', niche: 'Health', commission: '20%', status: 'active', description: 'Organic supplements and foods.', updatedAt: { seconds: Date.now() / 1000 } },
+        { id: '3', name: 'Pending Review App', niche: 'SaaS', commission: '30% recurring', status: 'review_needed', description: 'New AI writing tool.', updatedAt: { seconds: Date.now() / 1000 } }
+      ];
+      setPrograms(mockPrograms);
+      setLoading(false);
+      return;
+    }
+
     const programsRef = collection(db, 'programs');
     const q = query(programsRef);
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -87,7 +110,7 @@ export default function AffiliateWiki() {
       setLoading(false);
     });
     return () => unsubscribe();
-  }, [user]);
+  }, [user, isDemoMode]);
 
   // --- Derived State ---
   const activeProgram = useMemo(() => programs.find(p => p.id === currentProgramId), [programs, currentProgramId]);
@@ -95,7 +118,7 @@ export default function AffiliateWiki() {
   const filteredPrograms = useMemo(() => {
     let data = programs;
     if (view === 'home') {
-       data = programs.filter(p => p.status !== 'review_needed');
+      data = programs.filter(p => p.status !== 'review_needed');
     }
     if (!searchQuery) return data.sort((a, b) => (b.updatedAt?.seconds || 0) - (a.updatedAt?.seconds || 0));
     const lowerQuery = searchQuery.toLowerCase();
@@ -110,6 +133,25 @@ export default function AffiliateWiki() {
   // --- Actions ---
   const handleSave = async (data, asDraft = false) => {
     if (!user) return;
+
+    if (isDemoMode) {
+      const newProgram = {
+        ...data,
+        id: Math.random().toString(36).substr(2, 9),
+        updatedAt: { seconds: Date.now() / 1000 },
+        updatedBy: user.uid,
+        status: asDraft ? 'review_needed' : 'active'
+      };
+
+      if (currentProgramId && view === 'edit') {
+        setPrograms(prev => prev.map(p => p.id === currentProgramId ? { ...newProgram, id: currentProgramId } : p));
+      } else {
+        setPrograms(prev => [newProgram, ...prev]);
+      }
+      if (!asDraft) setView('view');
+      return;
+    }
+
     const programsRef = collection(db, 'programs');
     const timestamp = serverTimestamp();
     const status = asDraft ? 'review_needed' : 'active';
@@ -129,12 +171,20 @@ export default function AffiliateWiki() {
   };
 
   const handleApprove = async (id) => {
+    if (isDemoMode) {
+      setPrograms(prev => prev.map(p => p.id === id ? { ...p, status: 'active' } : p));
+      return;
+    }
     const ref = doc(db, 'programs', id);
     await updateDoc(ref, { status: 'active', reviewedBy: user.uid, reviewedAt: serverTimestamp() });
   };
 
   const handleReject = async (id) => {
-    if(confirm("Delete this submission?")) {
+    if (confirm("Delete this submission?")) {
+      if (isDemoMode) {
+        setPrograms(prev => prev.filter(p => p.id !== id));
+        return;
+      }
       const ref = doc(db, 'programs', id);
       await deleteDoc(ref);
     }
@@ -203,7 +253,7 @@ export default function AffiliateWiki() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {loading ? (
-          <div className="col-span-full flex justify-center py-12 text-slate-400"><Loader2 className="animate-spin mr-2"/> Loading...</div>
+          <div className="col-span-full flex justify-center py-12 text-slate-400"><Loader2 className="animate-spin mr-2" /> Loading...</div>
         ) : filteredPrograms.length === 0 ? (
           <div className="col-span-full text-center py-12 bg-white rounded-xl border border-dashed border-slate-300">
             <Database className="mx-auto text-slate-300 mb-4 h-12 w-12" />
@@ -223,8 +273,8 @@ export default function AffiliateWiki() {
               </div>
               <p className="text-slate-600 text-sm line-clamp-3 mb-4 h-15">{program.description || 'No description available.'}</p>
               <div className="flex items-center text-xs text-slate-500 space-x-4 pt-3 border-t border-slate-50">
-                <div className="flex items-center"><DollarSign size={12} className="mr-1 text-emerald-600"/>{program.commission || '?'}</div>
-                <div className="flex items-center"><Clock size={12} className="mr-1 text-blue-600"/>{program.cookieDuration || '?'}</div>
+                <div className="flex items-center"><DollarSign size={12} className="mr-1 text-emerald-600" />{program.commission || '?'}</div>
+                <div className="flex items-center"><Clock size={12} className="mr-1 text-blue-600" />{program.cookieDuration || '?'}</div>
               </div>
             </div>
           ))
@@ -275,7 +325,7 @@ export default function AffiliateWiki() {
           <div className="space-y-6">
             <div className="bg-slate-900 rounded-xl overflow-hidden shadow-lg border border-slate-700">
               <div className="bg-slate-800 px-4 py-2 flex items-center justify-between border-b border-slate-700">
-                <span className="text-slate-200 text-sm font-mono flex items-center"><FileJson size={14} className="mr-2"/> openapi.yaml</span>
+                <span className="text-slate-200 text-sm font-mono flex items-center"><FileJson size={14} className="mr-2" /> openapi.yaml</span>
                 <span className="text-xs text-slate-400">Read-Only</span>
               </div>
               <pre className="p-4 text-xs sm:text-sm text-emerald-400 font-mono overflow-x-auto h-96">
@@ -301,11 +351,10 @@ export default function AffiliateWiki() {
                 POST /api/programs
               </button>
               {terminalOutput && (
-                <div className={`mt-4 p-3 rounded-lg border text-sm font-mono whitespace-pre-wrap ${
-                  terminalOutput.type === 'error' ? 'bg-red-50 text-red-700 border-red-200' :
+                <div className={`mt-4 p-3 rounded-lg border text-sm font-mono whitespace-pre-wrap ${terminalOutput.type === 'error' ? 'bg-red-50 text-red-700 border-red-200' :
                   terminalOutput.type === 'success' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                  'bg-blue-50 text-blue-700 border-blue-200'
-                }`}>
+                    'bg-blue-50 text-blue-700 border-blue-200'
+                  }`}>
                   {terminalOutput.msg}
                 </div>
               )}
@@ -336,12 +385,12 @@ export default function AffiliateWiki() {
               <div className="flex justify-between items-start">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                     <h3 className="text-lg font-bold text-slate-900">{item.name}</h3>
-                     {item.source === 'api_simulation' && (
-                       <span className="bg-emerald-100 text-emerald-800 text-xs px-2 py-0.5 rounded flex items-center">
-                         <Bot size={10} className="mr-1"/> AI Generated
-                       </span>
-                     )}
+                    <h3 className="text-lg font-bold text-slate-900">{item.name}</h3>
+                    {item.source === 'api_simulation' && (
+                      <span className="bg-emerald-100 text-emerald-800 text-xs px-2 py-0.5 rounded flex items-center">
+                        <Bot size={10} className="mr-1" /> AI Generated
+                      </span>
+                    )}
                   </div>
                   <p className="text-slate-500 text-sm mb-2">{item.description}</p>
                   <div className="flex gap-4 text-xs text-slate-400 font-mono">
@@ -374,9 +423,9 @@ export default function AffiliateWiki() {
   const EditorView = () => {
     const [formData, setFormData] = useState(
       (view === 'edit' && activeProgram) ? activeProgram : {
-      name: '', url: '', niche: '', commission: '', cookieDuration: '',
-      network: 'Direct', description: '', payoutMethod: '', minPayout: ''
-    });
+        name: '', url: '', niche: '', commission: '', cookieDuration: '',
+        network: 'Direct', description: '', payoutMethod: '', minPayout: ''
+      });
 
     const handleSubmit = (e) => {
       e.preventDefault();
@@ -385,27 +434,27 @@ export default function AffiliateWiki() {
 
     return (
       <div className="max-w-2xl mx-auto px-4 py-8">
-        <button onClick={() => setView('home')} className="mb-4 text-slate-500 hover:text-slate-800 flex items-center"><ArrowLeft size={16} className="mr-1"/> Cancel</button>
+        <button onClick={() => setView('home')} className="mb-4 text-slate-500 hover:text-slate-800 flex items-center"><ArrowLeft size={16} className="mr-1" /> Cancel</button>
         <div className="bg-white p-6 rounded-xl shadow-lg border border-slate-200">
           <h2 className="text-xl font-bold mb-6 text-slate-900">{view === 'edit' ? 'Edit Program' : 'Add New Program'}</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-slate-700">Name</label>
-              <input required className="w-full p-2 border rounded mt-1" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+              <input required className="w-full p-2 border rounded mt-1" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
             </div>
             <div className="grid grid-cols-2 gap-4">
-               <div>
+              <div>
                 <label className="block text-sm font-medium text-slate-700">Niche</label>
-                <input className="w-full p-2 border rounded mt-1" value={formData.niche} onChange={e => setFormData({...formData, niche: e.target.value})} />
+                <input className="w-full p-2 border rounded mt-1" value={formData.niche} onChange={e => setFormData({ ...formData, niche: e.target.value })} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700">Commission</label>
-                <input className="w-full p-2 border rounded mt-1" value={formData.commission} onChange={e => setFormData({...formData, commission: e.target.value})} />
+                <input className="w-full p-2 border rounded mt-1" value={formData.commission} onChange={e => setFormData({ ...formData, commission: e.target.value })} />
               </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700">Description</label>
-              <textarea className="w-full p-2 border rounded mt-1" rows="4" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
+              <textarea className="w-full p-2 border rounded mt-1" rows="4" value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} />
             </div>
             <button type="submit" className="w-full py-2 bg-indigo-600 text-white rounded font-medium hover:bg-indigo-700">Save Program</button>
           </form>
@@ -418,12 +467,12 @@ export default function AffiliateWiki() {
     if (!activeProgram) return null;
     return (
       <div className="max-w-3xl mx-auto px-4 py-8">
-        <button onClick={() => setView('home')} className="mb-4 text-slate-500 flex items-center"><ArrowLeft size={16} className="mr-1"/> Back</button>
+        <button onClick={() => setView('home')} className="mb-4 text-slate-500 flex items-center"><ArrowLeft size={16} className="mr-1" /> Back</button>
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
           <div className="p-8">
             <div className="flex justify-between items-start mb-6">
               <h1 className="text-3xl font-bold text-slate-900">{activeProgram.name}</h1>
-              <button onClick={() => setView('edit')} className="flex items-center text-slate-500 hover:text-indigo-600 border px-3 py-1 rounded"><Edit2 size={14} className="mr-2"/> Edit</button>
+              <button onClick={() => setView('edit')} className="flex items-center text-slate-500 hover:text-indigo-600 border px-3 py-1 rounded"><Edit2 size={14} className="mr-2" /> Edit</button>
             </div>
             <div className="grid grid-cols-3 gap-4 mb-8">
               <div className="p-3 bg-slate-50 rounded border border-slate-100">
@@ -431,11 +480,11 @@ export default function AffiliateWiki() {
                 <div className="font-medium text-slate-800">{activeProgram.commission || 'N/A'}</div>
               </div>
               <div className="p-3 bg-slate-50 rounded border border-slate-100">
-                 <div className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Cookie</div>
+                <div className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Cookie</div>
                 <div className="font-medium text-slate-800">{activeProgram.cookieDuration || 'N/A'}</div>
               </div>
               <div className="p-3 bg-slate-50 rounded border border-slate-100">
-                 <div className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Network</div>
+                <div className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Network</div>
                 <div className="font-medium text-slate-800">{activeProgram.network || 'Direct'}</div>
               </div>
             </div>
