@@ -16,6 +16,7 @@ import CountriesListPage from "./pages/CountriesListPage";
 import CountryPage from "./pages/CountryPage";
 import AboutPage from "./pages/AboutPage";
 import ToolsPage from "./pages/ToolsPage";
+import AdminPage from "./pages/AdminPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,6 +41,7 @@ const App = () => (
           <Route path="/comparisons/:slug" element={<ComparisonPage />} />
           <Route path="/tools" element={<ToolsPage />} />
           <Route path="/about" element={<AboutPage />} />
+          <Route path="/admin" element={<AdminPage />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
