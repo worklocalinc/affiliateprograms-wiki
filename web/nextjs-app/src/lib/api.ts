@@ -152,8 +152,8 @@ export async function getNetworkSlugs(): Promise<string[]> {
 
 // Categories
 export async function getCategories(): Promise<Category[]> {
-  const data = await fetchAPI<{ categories: Category[] }>("/categories");
-  return data.categories;
+  const data = await fetchAPI<{ items?: Category[]; categories?: Category[] }>("/categories");
+  return data.items || data.categories || [];
 }
 
 export async function getCategory(slug: string): Promise<{

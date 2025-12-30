@@ -59,9 +59,12 @@ export default async function NetworksPage() {
   const networksData = await getNetworks();
 
   // Sort by program count
-  const networks = [...networksData.items].sort(
-    (a, b) => b.program_count - a.program_count
+  const networks = [...(networksData.items || [])].sort(
+    (a, b) => (b.program_count || 0) - (a.program_count || 0)
   );
+
+  // Calculate total programs across all networks
+  const totalPrograms = networks.reduce((sum, n) => sum + (n.program_count || 0), 0);
 
   return (
     <div className="space-y-8">
@@ -69,7 +72,7 @@ export default async function NetworksPage() {
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Affiliate Networks</h1>
         <p className="text-gray-600 mt-1">
-          {networks.length} affiliate networks with {networksData.total.toLocaleString()} total programs
+          {networks.length} affiliate networks with {totalPrograms.toLocaleString()} total programs
         </p>
       </div>
 
