@@ -1,0 +1,9 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "env": {
+    "API_URL": "https://api.affiliateprograms.wiki"
+  },
+  "regions": ["iad1"]
+}

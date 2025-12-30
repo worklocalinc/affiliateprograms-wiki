@@ -1,0 +1,17 @@
+{
+  "source": "skimlinks",
+  "api_url": "https://merchants.skimlinks.com/public/merchants",
+  "started_at": 1766796801.4045973,
+  "limit": 2000,
+  "start_offset": 2000,
+  "last_page": {
+    "offset_end": 36056,
+    "num_written": 56,
+    "has_more": false,
+    "reported_total": null
+  },
+  "written_total": 34056,
+  "loaded_total": 34056,
+  "finished_at": 1766796858.8699143,
+  "sha256": "afddccfebbc14f52ef21fbd5a334e29eeae368caa3be481b02ac5a15462bb520"
+}
